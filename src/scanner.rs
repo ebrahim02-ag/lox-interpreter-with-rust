@@ -95,7 +95,13 @@ impl Scanner{
             }
             '/' => {
                 if self.match_char('/') {
+                    // ignore comments
                     while !self.is_at_end() && self.peek() != '\n'{
+                        self.advance_char();
+                    }
+                } else if self.match_char('*'){
+                    // ignore block comments => /* */
+                    while !self.is_at_end() && !(self.match_char('*') && self.match_char('/')) {
                         self.advance_char();
                     }
                 } else {
@@ -148,6 +154,7 @@ impl Scanner{
     }
 
     fn match_char(&mut self, expected: char) -> bool {
+        // check if next character matches expected, if so, advance
         if self.is_at_end() { return false };
 
         let c = self.peek();
