@@ -1,8 +1,9 @@
 use crate::token_type::TokenType;
 use std::fmt;
+
 pub struct Token {
     kind: TokenType,
-    lexeme: String,
+    pub lexeme: String,
     literal: Literal,
     line: usize,
 }

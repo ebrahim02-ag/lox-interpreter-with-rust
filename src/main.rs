@@ -8,21 +8,44 @@ mod token;
 mod token_type;
 use scanner::Scanner;
 
+use crate::expr::Expr;
+use crate::token::Token;
+use crate::token_type::TokenType;
+mod expr;
+mod ast_printer;
+
 fn main() {
-    let args: Vec<String> = env::args().collect();
-    let had_error: bool = false;
-    if args.len() > 2 {
-        eprintln!("Usage: jlox [script]");
-        std::process::exit(64);
-    }
+let expr = Expr::Binary(expr::Binary {
+    left: Box::new(Expr::Unary(expr::Unary {
+        op: Token::new(TokenType::Minus, "-", token::Literal::Nil, 1),
+        right: Box::new(Expr::Literal(token::Literal::Number(123.0))),
+    })),
+    op: Token::new(TokenType::Star, "*", token::Literal::Nil, 1),
+    right: Box::new(Expr::Grouping(expr::Grouping {
+        expression: Box::new(Expr::Literal(token::Literal::Number(45.67))),
+    })),
+});
 
-    if args.len() == 2 {
-        run_file(&args[0]);
-    } else {
-        run_prompt();
-    }
-
+let mut printer = ast_printer::AstPrinter;
+println!("{}", printer.print(&expr));
 }
+
+
+// fn main() {
+//     let args: Vec<String> = env::args().collect();
+//     let had_error: bool = false;
+//     if args.len() > 2 {
+//         eprintln!("Usage: jlox [script]");
+//         std::process::exit(64);
+//     }
+
+//     if args.len() == 2 {
+//         run_file(&args[0]);
+//     } else {
+//         run_prompt();
+//     }
+
+// }
 
 fn run_file(path: &str){
     let contents: Vec<u8> = fs::read(path).unwrap_or_else(|err|{
