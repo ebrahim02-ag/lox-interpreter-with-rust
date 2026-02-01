@@ -11,14 +11,14 @@ pub struct Grouping {
     pub expression: Box<Expr>,
 }
 
-pub struct Unary {
-    pub op: Token,
+pub struct Unary<'a> {
+    pub op: &'a Token,
     pub right: Box<Expr>,
 }
 
-pub struct Binary {
+pub struct Binary<'a> {
     pub left: Box<Expr>,
-    pub op: Token,
+    pub op: &'a Token,
     pub right: Box<Expr>,
 }
 

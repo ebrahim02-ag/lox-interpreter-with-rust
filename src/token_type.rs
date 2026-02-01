@@ -1,6 +1,7 @@
 
 
 #[derive(Debug)]
+#[derive(PartialEq)]
 pub enum TokenType{
     // Single-character tokens.
     LeftParen, RightParen, LeftBrace, RightBrace,
@@ -44,4 +45,4 @@ impl From<&str> for TokenType {
             _ => TokenType::Identifier // like a variable for example
         }
     }
-} 
+}

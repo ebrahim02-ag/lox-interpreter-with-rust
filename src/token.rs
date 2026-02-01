@@ -2,7 +2,7 @@ use crate::token_type::TokenType;
 use std::fmt;
 
 pub struct Token {
-    kind: TokenType,
+    pub kind: TokenType,
     pub lexeme: String,
     literal: Literal,
     line: usize,
@@ -29,7 +29,7 @@ impl fmt::Display for Literal {
 impl Token {
     pub fn new(kind: TokenType, lexeme: &str, literal: Literal, line: usize) -> Self{
         Self{
-            kind, 
+            kind,
             lexeme: lexeme.to_string(),
             literal,
             line

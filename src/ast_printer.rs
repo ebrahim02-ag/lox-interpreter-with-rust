@@ -6,12 +6,12 @@ pub struct AstPrinter;
 impl Visitor<String> for AstPrinter{
     fn visit_binaryexp(&mut self, e: &Binary) -> String {
         self.paranthesize(&e.op.lexeme, vec![&e.left, &e.right])
-        
+
     }
 
     fn visit_groupingexp(&mut self, e: &Grouping) -> String {
         self.paranthesize("group", vec![&e.expression])
-        
+
     }
 
     fn visit_literalexp(&mut self, e: &Literal) -> String {
@@ -23,7 +23,7 @@ impl Visitor<String> for AstPrinter{
 
     fn visit_unaryexp(&mut self, e: &Unary) -> String {
         self.paranthesize(&e.op.lexeme, vec![&e.right])
-        
+
     }
 }
 impl AstPrinter {
@@ -38,7 +38,7 @@ impl AstPrinter {
         s.push_str(name);
 
         for expr in exprs {
-            s.push_str(" "); 
+            s.push_str(" ");
             s.push_str(&walk_expr(self, expr));
         }
 
@@ -46,4 +46,3 @@ impl AstPrinter {
         s
     }
 }
-

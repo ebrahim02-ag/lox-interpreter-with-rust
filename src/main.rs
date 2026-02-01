@@ -13,6 +13,7 @@ use crate::token::Token;
 use crate::token_type::TokenType;
 mod expr;
 mod ast_printer;
+mod parser;
 
 fn main() {
 let expr = Expr::Binary(expr::Binary {
@@ -59,7 +60,7 @@ fn run_prompt() {
     let stdin = io::stdin();
     let mut stdout = io::stdout();
     println!("Welcome to rlox! Type your commands below:");
-    
+
     for line in stdin.lock().lines() {
         match line {
             Ok(input) => {
