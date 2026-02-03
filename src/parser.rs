@@ -23,49 +23,23 @@ impl Parser {
     }
 
     fn equality(&mut self) -> Expr {
-        let mut expr: Expr = self.comparison();
-
         let token_types = [TokenType::BangEqual, TokenType::EqualEqual];
-        while self._match(&token_types){
-            let operator = self._previous();
-            let right = self.comparison();
-            expr = Expr::Binary(Binary{op: operator, left: Box::new(expr), right: Box::new(right)});
-        }
-
-        expr
+        self._left_recurse_binary(&token_types, Parser::comparison)
     }
 
     fn comparison(&mut self) -> Expr {
-        let mut expr: Expr = self.term();
         let token_types = [TokenType::Greater, TokenType::GreaterEqual, TokenType::LessEqual, TokenType::Less];
-        while self._match(&token_types){
-            let operator = self._previous();
-            let right = self.term();
-            expr = Expr::Binary(Binary{op: operator, left: Box::new(expr), right: Box::new(right)});
-        }
-        expr
+        self._left_recurse_binary(&token_types, Parser::comparison)
     }
 
     fn term(&mut self) -> Expr {
-        let mut expr: Expr = self.factor();
         let token_types = [TokenType::Minus, TokenType::Plus];
-        while self._match(&token_types){
-            let operator = self._previous();
-            let right = self.factor();
-            expr = Expr::Binary(Binary{op: operator, left: Box::new(expr), right: Box::new(right)});
-        }
-        expr
+        self._left_recurse_binary(&token_types, Parser::comparison)
     }
 
     fn factor(&mut self) -> Expr {
-        let mut expr: Expr = self.unary();
         let token_types = [TokenType::Star, TokenType::Slash];
-        while self._match(&token_types){
-            let operator = self._previous();
-            let right = self.unary();
-            expr = Expr::Binary(Binary{op: operator, left: Box::new(expr), right: Box::new(right)});
-        }
-        expr
+        self._left_recurse_binary(&token_types, Parser::comparison)
     }
 
     fn unary(&mut self) -> Expr {
@@ -74,7 +48,7 @@ impl Parser {
         if self._match(&token_types){
             let operator = self._previous();
             let right = self.unary();
-            expr = Expr::Unary(Unary { op:operator, right: right })
+            expr = Expr::Unary(Unary { op:operator, right: Box::new(right) })
         } else{
             expr = self.primary()
         }
@@ -111,6 +85,21 @@ impl Parser {
         }
 
         panic!("something went wrong")
+    }
+
+    fn _left_recurse_binary<F>(&mut self, token_types: &[TokenType], method: F) -> Expr
+    where F:Fn(&mut Self) -> Expr
+    {
+        // This method takes in a method as an argument (which here is the function of next precedence)
+        // which it then passes the mutable self to it to continue it's recursing journey.
+        // Finally it constructs the expression and returns it
+        let mut expr = method(self);
+        while self._match(token_types){
+            let operator = self._previous();
+            let right = method(self);
+            expr = Expr::Binary(Binary{op: operator, left: Box::new(expr), right: Box::new(right)});
+        }
+        expr
     }
 
     fn _match(&mut self, token_types: &[TokenType]) -> bool {
