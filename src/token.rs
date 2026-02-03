@@ -4,10 +4,11 @@ use std::fmt;
 pub struct Token {
     pub kind: TokenType,
     pub lexeme: String,
-    literal: Literal,
+    pub literal: Literal,
     line: usize,
 }
 
+#[derive(Debug, Clone)]
 pub enum Literal {
     Number(f64),
     String(String),

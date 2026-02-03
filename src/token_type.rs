@@ -1,6 +1,6 @@
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 #[derive(PartialEq)]
 pub enum TokenType{
     // Single-character tokens.
