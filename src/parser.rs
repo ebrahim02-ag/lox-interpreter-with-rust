@@ -3,11 +3,13 @@ use std::io;
 use crate::token::{Literal, Token};
 use crate::token_type::{self, TokenType};
 use crate::expr::{Expr, Binary, Unary, Grouping};
-
+use crate::lox_error;
 pub struct Parser {
     tokens: Vec<Token>,
     current: usize
 }
+
+struct ParserError;
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self{
@@ -17,89 +19,91 @@ impl Parser {
         }
     }
 
+    pub fn parse(&mut self) -> Option<Expr> {
+        match self.expression(){
+            Ok(expr) => return Some(expr),
+            Err(error) => return None
+        }
+    }
 
-    fn expression(&mut self) -> Expr{
+
+    fn expression(&mut self) -> Result<Expr, ParserError>{
         return self.equality()
     }
 
-    fn equality(&mut self) -> Expr {
+    fn equality(&mut self) -> Result<Expr, ParserError> {
         let token_types = [TokenType::BangEqual, TokenType::EqualEqual];
         self._left_recurse_binary(&token_types, Parser::comparison)
     }
 
-    fn comparison(&mut self) -> Expr {
+    fn comparison(&mut self) -> Result<Expr, ParserError> {
         let token_types = [TokenType::Greater, TokenType::GreaterEqual, TokenType::LessEqual, TokenType::Less];
-        self._left_recurse_binary(&token_types, Parser::comparison)
+        self._left_recurse_binary(&token_types, Parser::term)
     }
 
-    fn term(&mut self) -> Expr {
+    fn term(&mut self) -> Result<Expr, ParserError> {
         let token_types = [TokenType::Minus, TokenType::Plus];
-        self._left_recurse_binary(&token_types, Parser::comparison)
+        self._left_recurse_binary(&token_types, Parser::factor)
     }
 
-    fn factor(&mut self) -> Expr {
+    fn factor(&mut self) -> Result<Expr, ParserError> {
         let token_types = [TokenType::Star, TokenType::Slash];
-        self._left_recurse_binary(&token_types, Parser::comparison)
+        self._left_recurse_binary(&token_types, Parser::unary)
     }
 
-    fn unary(&mut self) -> Expr {
+    fn unary(&mut self) -> Result<Expr, ParserError> {
         let token_types = [TokenType::Bang, TokenType::Minus];
-        let mut expr;
+        let expr;
         if self._match(&token_types){
-            let operator = self._previous();
-            let right = self.unary();
-            expr = Expr::Unary(Unary { op:operator, right: Box::new(right) })
+            let operator = self._previous().clone();
+            let right = self.unary()?;
+            expr = Expr::Unary(Unary { op:operator, right: Box::new(right) });
         } else{
-            expr = self.primary()
+            expr = self.primary()?;
         }
-        expr
+        Ok(expr)
     }
 
-    fn primary(&mut self) -> Expr {
+    fn primary(&mut self) -> Result<Expr, ParserError> {
         if self._match(&[TokenType::True]){
-            return Expr::Literal(Literal::Bool(true))
+            return Ok(Expr::Literal(Literal::Bool(true)))
         }
 
         if self._match(&[TokenType::False]){
-            return Expr::Literal(Literal::Bool(false))
+            return Ok(Expr::Literal(Literal::Bool(false)))
         }
 
         if self._match(&[TokenType::Nil]){
-            return Expr::Literal(Literal::Nil)
+            return Ok(Expr::Literal(Literal::Nil))
         }
 
         if self._match(&[TokenType::Number, TokenType::String]){
             let literal = self._previous().literal.clone();
-            return Expr::Literal(literal)
+            return Ok(Expr::Literal(literal))
         }
 
         if self._match(&[TokenType::LeftParen]){
-            let expr = self.expression();
-            match self._consume(&TokenType::RightParen, "expected right paranthesis") {
-                Ok(true) => (),
-                Ok(false) => (),
-                Err(error) => panic!("it's cooked...")
-            }
-
-            return Expr::Grouping(Grouping { expression: Box::new(expr) })
+            let expr = self.expression()?;
+            self._consume(&TokenType::RightParen, "expected right paranthesis")?;
+            return Ok(Expr::Grouping(Grouping { expression: Box::new(expr) }))
         }
 
-        panic!("something went wrong")
+        Err(self._error(self._peek(), "expected expression"))
     }
 
-    fn _left_recurse_binary<F>(&mut self, token_types: &[TokenType], method: F) -> Expr
-    where F:Fn(&mut Self) -> Expr
+    fn _left_recurse_binary<F>(&mut self, token_types: &[TokenType], method: F) -> Result<Expr, ParserError>
+    where F: Fn(&mut Self) -> Result<Expr, ParserError>
     {
         // This method takes in a method as an argument (which here is the function of next precedence)
         // which it then passes the mutable self to it to continue it's recursing journey.
         // Finally it constructs the expression and returns it
-        let mut expr = method(self);
+        let mut expr = method(self)?;
         while self._match(token_types){
-            let operator = self._previous();
-            let right = method(self);
+            let operator = self._previous().clone();
+            let right = method(self)?;
             expr = Expr::Binary(Binary{op: operator, left: Box::new(expr), right: Box::new(right)});
         }
-        expr
+        Ok(expr)
     }
 
     fn _match(&mut self, token_types: &[TokenType]) -> bool {
@@ -122,12 +126,44 @@ impl Parser {
         &self.tokens[self.current]
     }
 
-    fn _consume(&mut self, token_type: &TokenType, error: &'static str) -> Result<bool, String> {
-        if !self._match(&[*token_type]){
-            return Err(error.to_string())
+    fn _consume(&mut self, token_type: &TokenType, error: &'static str) -> Result<&Token, ParserError> {
+        if self._check(token_type){
+            return Ok(self._advance())
         }
-        Ok(true)
+        Err(self._error(self._peek(), error))
     }
+
+    fn _error(&self, token: &Token, message: &str) -> ParserError {
+        lox_error(token, message);
+        ParserError
+    }
+
+    fn _synchronize(&mut self){
+        self._advance();
+
+        // this will be implemented once we have statements
+        while !self._at_end() {
+          // if (self._previous().type == StatmentType::SEMICOLON) {
+          //     return
+          // }
+
+          // match self.peek().type {
+
+          //   StatmentType::CLASS: ()
+          //   StatmentType::FUN: ()
+          //   StatmentType::VAR: ()
+          //   StatmentType::FOR: ()
+          //   StatmentType::IF: ()
+          //   StatmentType::WHILE: ()
+          //   StatmentType::PRINT: ()
+          //   StatmentType::RETURN:( )
+          //     return;
+          // }
+
+          self._advance();
+        }
+    }
+
 
     fn _at_end(&self) -> bool{
         self._peek().kind == TokenType::Eof

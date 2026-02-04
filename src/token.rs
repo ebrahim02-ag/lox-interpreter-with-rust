@@ -1,11 +1,12 @@
 use crate::token_type::TokenType;
 use std::fmt;
 
+#[derive(Debug, Clone)]
 pub struct Token {
     pub kind: TokenType,
     pub lexeme: String,
     pub literal: Literal,
-    line: usize,
+    pub line: usize,
 }
 
 #[derive(Debug, Clone)]

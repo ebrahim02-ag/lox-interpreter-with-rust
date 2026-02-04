@@ -4,49 +4,49 @@ use std::io::Read;
 use std::io::{self, Write, BufRead};
 
 mod scanner;
+mod parser;
 mod token;
 mod token_type;
 use scanner::Scanner;
+use parser::Parser;
 
 use crate::expr::Expr;
 use crate::token::Token;
 use crate::token_type::TokenType;
 mod expr;
 mod ast_printer;
-mod parser;
-
-fn main() {
-let expr = Expr::Binary(expr::Binary {
-    left: Box::new(Expr::Unary(expr::Unary {
-        op: Token::new(TokenType::Minus, "-", token::Literal::Nil, 1),
-        right: Box::new(Expr::Literal(token::Literal::Number(123.0))),
-    })),
-    op: Token::new(TokenType::Star, "*", token::Literal::Nil, 1),
-    right: Box::new(Expr::Grouping(expr::Grouping {
-        expression: Box::new(Expr::Literal(token::Literal::Number(45.67))),
-    })),
-});
-
-let mut printer = ast_printer::AstPrinter;
-println!("{}", printer.print(&expr));
-}
-
 
 // fn main() {
-//     let args: Vec<String> = env::args().collect();
-//     let had_error: bool = false;
-//     if args.len() > 2 {
-//         eprintln!("Usage: jlox [script]");
-//         std::process::exit(64);
-//     }
+// let expr = Expr::Binary(expr::Binary {
+//     left: Box::new(Expr::Unary(expr::Unary {
+//         op: Token::new(TokenType::Minus, "-", token::Literal::Nil, 1),
+//         right: Box::new(Expr::Literal(token::Literal::Number(123.0))),
+//     })),
+//     op: Token::new(TokenType::Star, "*", token::Literal::Nil, 1),
+//     right: Box::new(Expr::Grouping(expr::Grouping {
+//         expression: Box::new(Expr::Literal(token::Literal::Number(45.67))),
+//     })),
+// });
 
-//     if args.len() == 2 {
-//         run_file(&args[0]);
-//     } else {
-//         run_prompt();
-//     }
 
 // }
+
+
+fn main() {
+    let args: Vec<String> = env::args().collect();
+    let had_error: bool = false;
+    if args.len() > 2 {
+        eprintln!("Usage: jlox [script]");
+        std::process::exit(64);
+    }
+
+    if args.len() == 2 {
+        run_file(&args[0]);
+    } else {
+        run_prompt();
+    }
+
+}
 
 fn run_file(path: &str){
     let contents: Vec<u8> = fs::read(path).unwrap_or_else(|err|{
@@ -79,14 +79,28 @@ fn run_prompt() {
 
 fn run(source: String){
     let mut scanner = Scanner::new(source);
-    let tokens = scanner.scan_tokens();
-    for token in tokens {
+    let tokens = scanner.scan_tokens().clone();
+    for token in &tokens {
         eprintln!("{}", token);
     }
+
+    let mut parser = Parser::new(tokens);
+    if let Some(expressions) = parser.parse(){
+        let mut printer = ast_printer::AstPrinter;
+        println!("{}", printer.print(&expressions));
+    } else {
+        return
+    }
+
 }
 
-fn lox_error(line: &usize, message: &str){
-    report(line, "", message)
+fn lox_error(token: &Token, message: &str){
+    if token.kind == TokenType::Eof{
+        report(&token.line, " at end", message)
+    } else {
+        let _where = &format!("at '{}'", token.lexeme);
+        report(&token.line, _where, message)
+    }
 }
 
 fn report(line: &usize, _where: &str, message: &str){

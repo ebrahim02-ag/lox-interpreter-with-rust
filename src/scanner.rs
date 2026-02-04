@@ -1,14 +1,14 @@
 use core::f32;
 
-use crate::{lox_error, token_type};
-use crate::token::{self, Token};
+use crate::{report};
+use crate::token::{Token};
 use crate::token_type::TokenType;
 use crate::token::Literal;
 pub struct Scanner {
     source: String,
     tokens: Vec<Token>,
-    start: usize, 
-    line: usize, 
+    start: usize,
+    line: usize,
     current: usize
 }
 
@@ -35,7 +35,7 @@ impl Scanner{
         }
     }
 
-    pub fn scan_tokens(&mut self) -> &Vec<Token> {        
+    pub fn scan_tokens(&mut self) -> &Vec<Token> {
         while !self.is_at_end(){
             self.start = self.current;
             self.scan_token();
@@ -109,7 +109,7 @@ impl Scanner{
                 }
             }
             ' ' | '\r' | '\t' => {}
-            '\n' => self.line+=1, 
+            '\n' => self.line+=1,
             '"' => self.string(),
             _ => {
                 if self.is_digit(&c) {
@@ -117,13 +117,13 @@ impl Scanner{
                 } else if self.is_alpha(&c){
                     self.identifier();
                 }
-                
+
                 else {
-                    lox_error(&self.line, "Unexpected character.")
+                    report(&self.line, "", "Unexpected character.")
                 }
             },
         }
-            
+
     }
 
     fn peek(&self) -> char {
@@ -159,7 +159,7 @@ impl Scanner{
 
         let c = self.peek();
         if c != expected { return false };
-        
+
         self.current += c.len_utf8();
         true
     }
@@ -171,7 +171,7 @@ impl Scanner{
             self.advance_char();
         }
 
-        if self.is_at_end(){ lox_error(&self.line, "Undetermined string");}
+        if self.is_at_end(){ report(&self.line, "", "Undetermined string");}
 
         // the closing " was found, advance to it
         self.advance_char();
@@ -192,7 +192,7 @@ impl Scanner{
             self.advance_char();
         }
 
-        if self.peek() == '.' && self.is_digit(&self.peek_next()){ 
+        if self.peek() == '.' && self.is_digit(&self.peek_next()){
             self.advance_char();
 
             while self.is_digit(&self.peek()) {
@@ -207,7 +207,7 @@ impl Scanner{
         while self.is_alpha_numeric(&self.peek()) {
             self.advance_char();
         }
-        
+
         let text = &self.source[self.start..self.current];
         let tt = TokenType::from(text);
         self.add_token(tt, Literal::Nil);
