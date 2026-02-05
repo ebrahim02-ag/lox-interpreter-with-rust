@@ -1,4 +1,4 @@
-use std::io;
+use std::cmp::{min};
 
 use crate::token::{Literal, Token};
 use crate::token_type::{self, TokenType};
@@ -28,7 +28,14 @@ impl Parser {
 
 
     fn expression(&mut self) -> Result<Expr, ParserError>{
-        return self.equality()
+        return self.comma()
+    }
+
+    fn comma(&mut self) -> Result<Expr, ParserError> {
+        // challenge question ch6. Comma has lowest precedence in C according to stackoverflow
+        // https://stackoverflow.com/questions/54142/how-does-the-comma-operator-work-and-what-precedence-does-it-have
+        let token_types = [TokenType::Comma];
+        self._left_recurse_binary(&token_types, Parser::equality)
     }
 
     fn equality(&mut self) -> Result<Expr, ParserError> {
@@ -58,11 +65,14 @@ impl Parser {
             let operator = self._previous().clone();
             let right = self.unary()?;
             expr = Expr::Unary(Unary { op:operator, right: Box::new(right) });
-        } else{
+        } else {
             expr = self.primary()?;
         }
         Ok(expr)
     }
+
+    // if i were to support postfix (e.g a++) i'd add it here as a method and
+    // has its precedence right before primary
 
     fn primary(&mut self) -> Result<Expr, ParserError> {
         if self._match(&[TokenType::True]){
@@ -86,6 +96,28 @@ impl Parser {
             let expr = self.expression()?;
             self._consume(&TokenType::RightParen, "expected right paranthesis")?;
             return Ok(Expr::Grouping(Grouping { expression: Box::new(expr) }))
+        }
+
+        /* binary error productiond. If we find a binary operator here it means that the
+        binary expression method's left operand does not exist. e.g => (>= 2).
+        Print out the error but return the method to ignore the token basically and continue recursion.
+        Reason is cuz (+ 1 - 2) is valid and should evaluate to  (1 - 2)
+        */
+        if self._match(&[TokenType::BangEqual, TokenType::Equal]){
+            self._error(self._peek(), "Missing Left Hand Operand");
+            return self.equality();
+        }
+        if self._match(&[TokenType::Greater, TokenType::GreaterEqual, TokenType::Less, TokenType::LessEqual]){
+            self._error(self._peek(), "Missing Left Hand Operand");
+            return self.comparison();
+        }
+        if self._match(&[TokenType::Plus]){
+            self._error(self._peek(), "Missing Left Hand Operand");
+            return self.term();
+        }
+        if self._match(&[TokenType::Star, TokenType::Slash]){
+            self._error(self._peek(), "Missing Left Hand Operand");
+            return self.factor();
         }
 
         Err(self._error(self._peek(), "expected expression"))
@@ -112,6 +144,23 @@ impl Parser {
             return true
         }
         false
+    }
+
+    fn _match_mult(&mut self, token_type: &TokenType, lookahead: usize) -> bool{
+        let mut advanced = 0;
+        for _ in 0..lookahead {
+            if self._check(token_type){
+                self._advance();
+                advanced = advanced + 1;
+            } else {
+                for _ in 0..advanced {
+                    self._retreat();
+                }
+                return false
+            }
+        }
+
+        return true
     }
 
     fn _check(&self, token_type: &TokenType) -> bool{
@@ -178,6 +227,11 @@ impl Parser {
             self.current += 1;
         }
         self._previous()
+    }
+
+    fn _retreat(&mut self) -> &Token {
+        self.current = min(self.current - 1, 0);
+        self._peek()
     }
 
 }
