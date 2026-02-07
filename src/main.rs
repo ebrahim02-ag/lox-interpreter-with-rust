@@ -15,9 +15,15 @@ use scanner::Scanner;
 use parser::Parser;
 
 use crate::expr::Expr;
+use crate::interpreter::Interpreter;
+use crate::interpreter::RuntimeError;
 use crate::token::Token;
 use crate::token_type::TokenType;
+use std::sync::atomic::{AtomicBool, Ordering};
 
+
+static HAD_ERROR: AtomicBool = AtomicBool::new(false);
+static HAD_RUNTIME_ERROR: AtomicBool = AtomicBool::new(false);
 
 // fn main() {
 // let expr = Expr::Binary(expr::Binary {
@@ -37,7 +43,6 @@ use crate::token_type::TokenType;
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    let had_error: bool = false;
     if args.len() > 2 {
         eprintln!("Usage: jlox [script]");
         std::process::exit(64);
@@ -57,6 +62,12 @@ fn run_file(path: &str){
         std::process::exit(64);
     });
     run(String::from_utf8(contents).unwrap());
+    if HAD_ERROR.load(Ordering::Relaxed) {
+        std::process::exit(64);
+    }
+    if HAD_RUNTIME_ERROR.load(Ordering::Relaxed) {
+        std::process::exit(70);
+    }
 }
 
 fn run_prompt() {
@@ -83,14 +94,16 @@ fn run_prompt() {
 fn run(source: String){
     let mut scanner = Scanner::new(source);
     let tokens = scanner.scan_tokens().clone();
-    for token in &tokens {
-        eprintln!("{}", token);
-    }
+    // for token in &tokens {
+    //     eprintln!("{}", token);
+    // }
 
     let mut parser = Parser::new(tokens);
     if let Some(expressions) = parser.parse(){
-        let mut printer = ast_printer::AstPrinter;
-        println!("{}", printer.print(&expressions));
+        // let mut printer = ast_printer::AstPrinter;
+        // println!("{}", printer.print(&expressions));
+        let mut interpreter = Interpreter::new();
+        interpreter.interpret(&expressions);
     } else {
         return
     }
@@ -107,5 +120,12 @@ fn lox_error(token: &Token, message: &str){
 }
 
 fn report(line: &usize, _where: &str, message: &str){
-    eprintln!("line {} Error {}: {}", line, _where, message)
+    eprintln!("line {} Error {}: {}", line, _where, message);
+    HAD_ERROR.store(true, Ordering::Relaxed);
+}
+
+
+fn runtime_error(err: RuntimeError){
+    eprintln!("{}", err);
+    HAD_RUNTIME_ERROR.store(true, Ordering::Relaxed);
 }
