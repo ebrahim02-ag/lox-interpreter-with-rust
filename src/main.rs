@@ -7,14 +7,17 @@ mod scanner;
 mod parser;
 mod token;
 mod token_type;
+mod expr;
+mod ast_printer;
+mod interpreter;
+mod object;
 use scanner::Scanner;
 use parser::Parser;
 
 use crate::expr::Expr;
 use crate::token::Token;
 use crate::token_type::TokenType;
-mod expr;
-mod ast_printer;
+
 
 // fn main() {
 // let expr = Expr::Binary(expr::Binary {
