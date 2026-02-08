@@ -28,7 +28,7 @@ impl fmt::Display for RuntimeError {
 }
 
 impl Visitor<Result<Object, RuntimeError>> for Interpreter {
-    fn visit_binaryexp(&mut self, e: &Binary) -> Result<Object, RuntimeError> {
+    fn visit_binaryexp(&self, e: &Binary) -> Result<Object, RuntimeError> {
         let left = self.evaluate(&e.left)?;
         let right = self.evaluate(&e.right)?;
 
@@ -88,11 +88,11 @@ impl Visitor<Result<Object, RuntimeError>> for Interpreter {
 
     }
 
-    fn visit_groupingexp(&mut self, e: &Grouping) -> Result<Object, RuntimeError> {
+    fn visit_groupingexp(&self, e: &Grouping) -> Result<Object, RuntimeError> {
         return self.evaluate(&e.expression)
     }
 
-    fn visit_literalexp(&mut self, e: &Literal) -> Result<Object, RuntimeError> {
+    fn visit_literalexp(&self, e: &Literal) -> Result<Object, RuntimeError> {
         let literal = e.clone();
         match literal {
             Literal::Bool(i) => Ok(Object::Boolean(i)),
@@ -102,7 +102,7 @@ impl Visitor<Result<Object, RuntimeError>> for Interpreter {
         }
     }
 
-    fn visit_unaryexp(&mut self, e: &Unary) -> Result<Object, RuntimeError> {
+    fn visit_unaryexp(&self, e: &Unary) -> Result<Object, RuntimeError> {
         // Evaluate the right hand expression, but negate if it the operator is !/-.
         let right = self.evaluate(&e.right)?;
         match e.op.kind {
@@ -126,7 +126,7 @@ impl Interpreter {
         Self{}
     }
 
-    pub fn interpret(&mut self, expr: &Expr) {
+    pub fn interpret(&self, expr: &Expr) {
         match self.evaluate(expr) {
             Ok(obj) => println!("{}", self.stringify(&obj)),
             Err(e) => {
@@ -152,7 +152,7 @@ impl Interpreter {
         }
     }
 
-    fn evaluate(&mut self, expr: &Expr) -> Result<Object, RuntimeError>{
+    fn evaluate(&self, expr: &Expr) -> Result<Object, RuntimeError>{
         return walk_expr(self, expr)
     }
 

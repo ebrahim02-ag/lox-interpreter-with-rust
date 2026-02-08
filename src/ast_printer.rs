@@ -4,34 +4,34 @@ use crate::token::{Literal};
 
 pub struct AstPrinter;
 impl Visitor<String> for AstPrinter{
-    fn visit_binaryexp(&mut self, e: &Binary) -> String {
+    fn visit_binaryexp(&self, e: &Binary) -> String {
         self.paranthesize(&e.op.lexeme, vec![&e.left, &e.right])
 
     }
 
-    fn visit_groupingexp(&mut self, e: &Grouping) -> String {
+    fn visit_groupingexp(&self, e: &Grouping) -> String {
         self.paranthesize("group", vec![&e.expression])
 
     }
 
-    fn visit_literalexp(&mut self, e: &Literal) -> String {
+    fn visit_literalexp(&self, e: &Literal) -> String {
         match e {
             Literal::Nil => "nil".to_string(),
             _ => e.to_string()
         }
     }
 
-    fn visit_unaryexp(&mut self, e: &Unary) -> String {
+    fn visit_unaryexp(&self, e: &Unary) -> String {
         self.paranthesize(&e.op.lexeme, vec![&e.right])
 
     }
 }
 impl AstPrinter {
-    pub fn print(&mut self, expr: &Expr) -> String{
+    pub fn print(&self, expr: &Expr) -> String{
         return walk_expr(self, expr)
     }
 
-    fn paranthesize(&mut self, name: &str, exprs: Vec<&Expr>) -> String{
+    fn paranthesize(&self, name: &str, exprs: Vec<&Expr>) -> String{
         let mut s = String::new();
 
         s.push_str("(");

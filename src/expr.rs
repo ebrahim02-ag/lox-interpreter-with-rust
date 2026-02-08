@@ -23,13 +23,13 @@ pub struct Binary {
 }
 
 pub trait Visitor<T> {
-    fn visit_binaryexp(&mut self, e: &Binary) -> T;
-    fn visit_groupingexp(&mut self, e: &Grouping) -> T;
-    fn visit_literalexp(&mut self, e: &Literal) -> T;
-    fn visit_unaryexp(&mut self, e: &Unary) -> T;
+    fn visit_binaryexp(&self, e: &Binary) -> T;
+    fn visit_groupingexp(&self, e: &Grouping) -> T;
+    fn visit_literalexp(&self, e: &Literal) -> T;
+    fn visit_unaryexp(&self, e: &Unary) -> T;
 }
 
-pub fn walk_expr<T>(visitor: &mut dyn Visitor<T>, e: &Expr) -> T {
+pub fn walk_expr<T>(visitor: &dyn Visitor<T>, e: &Expr) -> T {
     match e {
         Expr::Literal(lit) => visitor.visit_literalexp(lit),
         Expr::Binary(binary) => visitor.visit_binaryexp(binary),
