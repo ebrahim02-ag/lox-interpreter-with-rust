@@ -5,6 +5,7 @@ use crate::lox_error;
 use crate::token::{Literal, Token};
 use crate::object::Object;
 use crate::token_type::TokenType;
+use crate::stmt::{Stmt, Visitor as StmtVisitor, Expression, Print, walk_stmt};
 
 pub struct Interpreter;
 pub struct RuntimeError {
@@ -121,18 +122,45 @@ impl Visitor<Result<Object, RuntimeError>> for Interpreter {
     }
 }
 
+impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
+    fn visit_expression(&self, expr: &Expression) -> Result<(), RuntimeError> {
+        match self.evaluate(&expr.expression){
+            Err(e) => Err(e),
+            Ok(_) => Ok(())
+        }
+    }
+
+    fn visit_print(&self, expr: &Print) -> Result<(), RuntimeError> {
+        let obj = self.evaluate(&expr.expression);
+
+        match self.evaluate(&expr.expression) {
+            Err(e) => Err(e),
+            Ok(obj) => {
+                println!("{}", self.stringify(&obj));
+                Ok(())
+            }
+        }
+    }
+}
+
 impl Interpreter {
     pub fn new() -> Self {
         Self{}
     }
 
-    pub fn interpret(&self, expr: &Expr) {
-        match self.evaluate(expr) {
-            Ok(obj) => println!("{}", self.stringify(&obj)),
-            Err(e) => {
-                lox_error(&e.token, &e.message)
-            },
+    pub fn interpret(&self, stmts: Vec<Stmt>) {
+        for stmt in stmts {
+            match self.execute(&stmt) {
+                Err(e) => {
+                    lox_error(&e.token, &e.message)
+                },
+                _ => (),
+            }
         }
+    }
+
+    fn execute(&self, stmt: &Stmt) -> Result<(), RuntimeError>{
+        return walk_stmt(self, stmt)
     }
 
     fn stringify(&self, obj: &Object) -> String {
@@ -153,7 +181,7 @@ impl Interpreter {
     }
 
     fn evaluate(&self, expr: &Expr) -> Result<Object, RuntimeError>{
-        return walk_expr(self, expr)
+        walk_expr(self, expr)
     }
 
     fn is_truthy(&self, obj: &Object) -> bool{

@@ -1,9 +1,11 @@
 use std::cmp::{min};
 
-use crate::token::{Literal, Token};
+use crate::token::{self, Literal, Token};
 use crate::token_type::{self, TokenType};
 use crate::expr::{Expr, Binary, Unary, Grouping};
 use crate::lox_error;
+use crate::stmt::{Expression, Stmt};
+
 pub struct Parser {
     tokens: Vec<Token>,
     current: usize
@@ -19,13 +21,35 @@ impl Parser {
         }
     }
 
-    pub fn parse(&mut self) -> Option<Expr> {
-        match self.expression(){
-            Ok(expr) => return Some(expr),
-            Err(error) => return None
+    pub fn parse(&mut self) -> Result<Vec<Stmt>, ParserError> {
+        let mut statements: Vec<Stmt> = Vec::new();
+
+        while(!self._at_end()){
+            statements.push(self.statement()?);
         }
+
+        return Ok(statements);
     }
 
+    fn statement(&mut self) -> Result<Stmt, ParserError>  {
+        let token_type = [TokenType::Print];
+        if self._match(&token_type) {
+            return self.print_statement()
+        }
+        return self.expression_statement()
+    }
+
+    fn print_statement(&mut self) -> Result<Stmt, ParserError> {
+        let expr = self.expression();
+        self._consume(&TokenType::Semicolon, "Expected ';' at the end of statement");
+        return Ok(Stmt::Print(Expression {expression: expr?}));
+    }
+
+    fn expression_statement(&mut self) -> Result<Stmt, ParserError> {
+        let expr = self.expression();
+        self._consume(&TokenType::Semicolon, "Expected ';' at the end of statement");
+        return Ok(Stmt::Expression(Expression {expression: expr?}));
+    }
 
     fn expression(&mut self) -> Result<Expr, ParserError>{
         return self.comma()

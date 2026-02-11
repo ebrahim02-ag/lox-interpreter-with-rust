@@ -11,6 +11,7 @@ mod expr;
 mod ast_printer;
 mod interpreter;
 mod object;
+mod stmt;
 use scanner::Scanner;
 use parser::Parser;
 
