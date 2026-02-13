@@ -1,8 +1,10 @@
 use crate::token::{Token, Literal};
 use crate::expr::Expr;
+
 pub enum Stmt {
     Expression(Expression),
-    Print(Print)
+    Print(Print),
+    Variable(Variable)
 }
 
 pub struct Expression {
@@ -11,6 +13,11 @@ pub struct Expression {
 
 pub struct Print {
     pub expression: Expr,
+}
+
+pub struct Variable {
+    pub name: Token,
+    pub initializer: Expr,
 }
 
 pub trait Visitor<T> {

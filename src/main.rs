@@ -12,6 +12,8 @@ mod ast_printer;
 mod interpreter;
 mod object;
 mod stmt;
+mod environment;
+
 use scanner::Scanner;
 use parser::Parser;
 
@@ -92,7 +94,7 @@ fn run_prompt() {
     }
 }
 
-fn run(source: String){
+fn run(source: String) {
     let mut scanner = Scanner::new(source);
     let tokens = scanner.scan_tokens().clone();
     // for token in &tokens {
@@ -103,8 +105,8 @@ fn run(source: String){
     if let Some(expressions) = parser.parse(){
         // let mut printer = ast_printer::AstPrinter;
         // println!("{}", printer.print(&expressions));
-        let mut interpreter = Interpreter::new();
-        interpreter.interpret(&expressions);
+        let interpreter = Interpreter::new();
+        interpreter.interpret(expressions);
     } else {
         return
     }

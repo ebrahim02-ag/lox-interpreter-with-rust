@@ -1,4 +1,4 @@
-use crate::expr::{Visitor, Expr, Binary, Grouping, Unary, walk_expr};
+use crate::expr::{Visitor, Expr, Binary, Grouping, Unary, Variable, walk_expr};
 use crate::token::{Literal};
 
 
@@ -24,6 +24,10 @@ impl Visitor<String> for AstPrinter{
     fn visit_unaryexp(&self, e: &Unary) -> String {
         self.paranthesize(&e.op.lexeme, vec![&e.right])
 
+    }
+
+    fn visit_variableexp(&self, e: &Variable) -> String {
+        e.name.lexeme.clone()
     }
 }
 impl AstPrinter {

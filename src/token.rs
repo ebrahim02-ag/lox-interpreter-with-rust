@@ -37,6 +37,15 @@ impl Token {
             line
         }
     }
+
+    pub fn default() -> Self {
+        Self {
+            kind: TokenType::Nil,
+            lexeme: "".to_string(),
+            literal: Literal::Nil,
+            line: 0
+        }
+    }
 }
 
 impl fmt::Display for Token{

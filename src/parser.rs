@@ -2,16 +2,16 @@ use std::cmp::{min};
 
 use crate::token::{self, Literal, Token};
 use crate::token_type::{self, TokenType};
-use crate::expr::{Expr, Binary, Unary, Grouping};
+use crate::expr::{Expr, Binary, Unary, Grouping, Variable as VariableExpr};
 use crate::lox_error;
-use crate::stmt::{Expression, Stmt};
+use crate::stmt::{Expression, Print, Stmt, Variable};
 
 pub struct Parser {
     tokens: Vec<Token>,
     current: usize
 }
 
-struct ParserError;
+pub struct ParserError;
 
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self{
@@ -21,14 +21,30 @@ impl Parser {
         }
     }
 
-    pub fn parse(&mut self) -> Result<Vec<Stmt>, ParserError> {
+    pub fn parse(&mut self) -> Option<Vec<Stmt>> {
         let mut statements: Vec<Stmt> = Vec::new();
 
-        while(!self._at_end()){
-            statements.push(self.statement()?);
+        while !self._at_end(){
+            statements.push(self.declaration()?);
         }
 
-        return Ok(statements);
+        return Some(statements);
+    }
+
+    fn declaration(&mut self) -> Option<Stmt> {
+        let token_type = [TokenType::Var];
+        let statement = match self._match(&token_type) {
+            true => self.var_statement(),
+            false => self.statement()
+        };
+
+        match statement {
+            Ok(stm) => Some(stm),
+            Err(stm) => {
+                self._synchronize();
+                None
+            }
+        }
     }
 
     fn statement(&mut self) -> Result<Stmt, ParserError>  {
@@ -39,15 +55,29 @@ impl Parser {
         return self.expression_statement()
     }
 
+
+    fn var_statement(&mut self) -> Result<Stmt, ParserError> {
+        // this john is trying to emulate -> var a = 12;
+
+        let name = self._consume(&TokenType::Identifier, "Expected variable name :<(")?.clone();
+        let token_type = [TokenType::Equal];
+        let expr = match self._match(&token_type) {
+            true => self.expression(),
+            false => Ok(Expr::Literal(Literal::Nil)) // var a -> means var a = None;
+        };
+        self._consume(&TokenType::Semicolon, "Expected ';' at the end of statement")?;
+        return Ok(Stmt::Variable(Variable {name: name, initializer: expr?}));
+    }
+
     fn print_statement(&mut self) -> Result<Stmt, ParserError> {
         let expr = self.expression();
-        self._consume(&TokenType::Semicolon, "Expected ';' at the end of statement");
-        return Ok(Stmt::Print(Expression {expression: expr?}));
+        self._consume(&TokenType::Semicolon, "Expected ';' at the end of statement")?;
+        return Ok(Stmt::Print(Print {expression: expr?}));
     }
 
     fn expression_statement(&mut self) -> Result<Stmt, ParserError> {
         let expr = self.expression();
-        self._consume(&TokenType::Semicolon, "Expected ';' at the end of statement");
+        self._consume(&TokenType::Semicolon, "Expected ';' at the end of statement")?;
         return Ok(Stmt::Expression(Expression {expression: expr?}));
     }
 
@@ -122,6 +152,10 @@ impl Parser {
             return Ok(Expr::Grouping(Grouping { expression: Box::new(expr) }))
         }
 
+        if self._match(&[TokenType::Identifier]){
+            let name = self._previous().clone();
+            return Ok(Expr::Variable(VariableExpr { name: name}))
+        }
         /* binary error productiond. If we find a binary operator here it means that the
         binary expression method's left operand does not exist. e.g => (>= 2).
         Print out the error but return the method to ignore the token basically and continue recursion.
