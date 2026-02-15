@@ -23,6 +23,7 @@ pub struct Variable {
 pub trait Visitor<T> {
     fn visit_expression(&self, e: &Expression) -> T;
     fn visit_print(&self, e: &Print) -> T;
+    fn visit_var_stm(&self, e: &Variable) -> T;
 }
 
 
@@ -31,5 +32,6 @@ pub fn walk_stmt<T>(visitor: &dyn Visitor<T>, e: &Stmt) -> T {
     match e {
         Stmt::Expression(expr) => visitor.visit_expression(expr),
         Stmt::Print(pri) => visitor.visit_print(pri),
+        Stmt::Variable(var) => visitor.visit_var_stm(var),
     }
 }

@@ -1,13 +1,18 @@
 
 use std::fmt;
-use crate::expr::{Visitor, Expr, Binary, Grouping, Unary, walk_expr};
+use crate::expr::{Visitor, Expr, Binary, Grouping, Unary, Variable as VariableExpr, walk_expr};
 use crate::lox_error;
 use crate::token::{Literal, Token};
 use crate::object::Object;
 use crate::token_type::TokenType;
-use crate::stmt::{Stmt, Visitor as StmtVisitor, Expression, Print, walk_stmt};
+use crate::stmt::{Stmt, Visitor as StmtVisitor, Expression, Print, walk_stmt, Variable};
+use crate::environment::{Environment};
 
-pub struct Interpreter;
+
+pub struct Interpreter {
+    environment: Environment,
+}
+
 pub struct RuntimeError {
     token: Token,
     message: String,
@@ -29,6 +34,10 @@ impl fmt::Display for RuntimeError {
 }
 
 impl Visitor<Result<Object, RuntimeError>> for Interpreter {
+    fn visit_variableexp(&self, e: &VariableExpr) -> Result<Object, RuntimeError> {
+        return self.environment.get(&e.name)
+    }
+
     fn visit_binaryexp(&self, e: &Binary) -> Result<Object, RuntimeError> {
         let left = self.evaluate(&e.left)?;
         let right = self.evaluate(&e.right)?;
@@ -123,6 +132,16 @@ impl Visitor<Result<Object, RuntimeError>> for Interpreter {
 }
 
 impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
+    fn visit_var_stm(&self, stmt: &Variable) -> Result<(), RuntimeError> {
+        // in the book, the initializer can be None and needs to be handled differently. However, for us
+        // the initializer can't be None - it's an enum whose value is type Literal::Nil which evaluates to None.
+        // This means we don't need to handle it separately.
+        let value = self.evaluate(&stmt.initializer);
+        self.environment.define(stmt.name.lexeme.to_owned(), value?);
+        Ok(())
+    }
+
+
     fn visit_expression(&self, expr: &Expression) -> Result<(), RuntimeError> {
         match self.evaluate(&expr.expression){
             Err(e) => Err(e),
@@ -130,10 +149,10 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
         }
     }
 
-    fn visit_print(&self, expr: &Print) -> Result<(), RuntimeError> {
-        let obj = self.evaluate(&expr.expression);
+    fn visit_print(&self, stmt: &Print) -> Result<(), RuntimeError> {
+        let obj = self.evaluate(&stmt.expression);
 
-        match self.evaluate(&expr.expression) {
+        match self.evaluate(&stmt.expression) {
             Err(e) => Err(e),
             Ok(obj) => {
                 println!("{}", self.stringify(&obj));
@@ -145,7 +164,9 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
 
 impl Interpreter {
     pub fn new() -> Self {
-        Self{}
+        Self {
+            environment: Environment::new()
+        }
     }
 
     pub fn interpret(&self, stmts: Vec<Stmt>) {

@@ -77,16 +77,32 @@ fn run_prompt() {
     let stdin = io::stdin();
     let mut stdout = io::stdout();
     println!("Welcome to rlox! Type your commands below:");
+    println!("(Press Enter twice to execute)");
+    print!("> ");
+    stdout.flush().unwrap();
+
+    let mut buffer = String::new();
 
     for line in stdin.lock().lines() {
-        match line {
-            Ok(input) => {
-                run(input);
-            }
+        let input = match line {
+            Ok(input) => input,
             Err(err) => {
                 eprintln!("Error reading input: {}", err);
                 break;
             }
+        };
+
+        if !input.is_empty() {
+            buffer.push_str(&input);
+            buffer.push('\n');
+            print!("- ");
+            stdout.flush().unwrap();
+            continue;
+        }
+
+        if !buffer.is_empty() {
+            run(buffer.clone());
+            buffer.clear();
         }
 
         print!("> ");
@@ -102,11 +118,11 @@ fn run(source: String) {
     // }
 
     let mut parser = Parser::new(tokens);
-    if let Some(expressions) = parser.parse(){
-        // let mut printer = ast_printer::AstPrinter;
-        // println!("{}", printer.print(&expressions));
+    if let Some(statements) = parser.parse() {
+        let printer = ast_printer::AstPrinter;
+        // println!("{:?}", printer.print_stmts(&statements));
         let interpreter = Interpreter::new();
-        interpreter.interpret(expressions);
+        interpreter.interpret(statements);
     } else {
         return
     }

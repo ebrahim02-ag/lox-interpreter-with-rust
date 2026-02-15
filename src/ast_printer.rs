@@ -1,8 +1,23 @@
 use crate::expr::{Visitor, Expr, Binary, Grouping, Unary, Variable, walk_expr};
+use crate::stmt::{Stmt, Visitor as StmtVisitor, Expression, Print, walk_stmt, Variable as StmVariable};
 use crate::token::{Literal};
-
-
 pub struct AstPrinter;
+
+
+impl StmtVisitor<String> for AstPrinter {
+    fn visit_expression(&self, e: &Expression) -> String {
+        self.print(&e.expression)
+    }
+
+    fn visit_print(&self, e: &Print) -> String {
+        format!("print {}",self.print(&e.expression))
+    }
+
+    fn visit_var_stm(&self, e: &StmVariable) -> String {
+        format!("var {} = {}", e.name.lexeme, self.print(&e.initializer))
+    }
+}
+
 impl Visitor<String> for AstPrinter{
     fn visit_binaryexp(&self, e: &Binary) -> String {
         self.paranthesize(&e.op.lexeme, vec![&e.left, &e.right])
@@ -27,10 +42,21 @@ impl Visitor<String> for AstPrinter{
     }
 
     fn visit_variableexp(&self, e: &Variable) -> String {
-        e.name.lexeme.clone()
+        format!("var {} =", e.name.lexeme)
     }
 }
+
+
 impl AstPrinter {
+    pub fn print_stmts(&self, stmts: &Vec<Stmt>) -> Vec<String>{
+        let mut exprs = Vec::new();
+        for statement in stmts{
+            exprs.push(walk_stmt(self, &statement))
+        }
+        exprs
+    }
+
+
     pub fn print(&self, expr: &Expr) -> String{
         return walk_expr(self, expr)
     }
