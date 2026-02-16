@@ -36,7 +36,7 @@ impl Environment {
         }
 
         Err(RuntimeError::new(
-            Token::default(),
+            Token::default(name.line),
             &format!("Undefined variable '{}'", name.lexeme),
         ))
     }
@@ -52,6 +52,6 @@ impl Environment {
             return enclosing.assign(name, obj);
         }
 
-        Err(RuntimeError::new(Token::default(), &format!("Undefined variable '{}'", name.lexeme)))
+        Err(RuntimeError::new(Token::default(name.line), &format!("Undefined variable '{}'", name.lexeme)))
     }
 }

@@ -38,12 +38,12 @@ impl Token {
         }
     }
 
-    pub fn default() -> Self {
+    pub fn default(line: usize) -> Self {
         Self {
             kind: TokenType::Nil,
             lexeme: "".to_string(),
             literal: Literal::Nil,
-            line: 0
+            line: line
         }
     }
 }

@@ -1,6 +1,5 @@
 use std::env;
 use std::fs;
-use std::io::Read;
 use std::io::{self, Write, BufRead};
 
 mod scanner;
@@ -17,16 +16,16 @@ mod environment;
 use scanner::Scanner;
 use parser::Parser;
 
-use crate::expr::Expr;
 use crate::interpreter::Interpreter;
 use crate::interpreter::RuntimeError;
 use crate::token::Token;
 use crate::token_type::TokenType;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::atomic::{AtomicBool, Ordering, AtomicIsize};
 
 
 static HAD_ERROR: AtomicBool = AtomicBool::new(false);
 static HAD_RUNTIME_ERROR: AtomicBool = AtomicBool::new(false);
+static PARSER_ERROR_LINE: AtomicIsize = AtomicIsize::new(-1);
 
 // fn main() {
 // let expr = Expr::Binary(expr::Binary {
@@ -93,16 +92,14 @@ fn run_prompt() {
         };
 
         if !input.is_empty() {
-            buffer.push_str(&input);
-            buffer.push('\n');
-            print!("- ");
-            stdout.flush().unwrap();
-            continue;
-        }
-
-        if !buffer.is_empty() {
-            run(buffer.clone());
-            buffer.clear();
+            if input == "clear" {
+                buffer.clear();
+            } else {
+                buffer.push_str(&input);
+                run(buffer.clone());
+                buffer.push_str("\n");
+                buffer = remove_line(buffer);
+            }
         }
 
         print!("> ");
@@ -130,7 +127,7 @@ fn run(source: String) {
 }
 
 fn lox_error(token: &Token, message: &str){
-    if token.kind == TokenType::Eof{
+    if token.kind == TokenType::Eof {
         report(&token.line, " at end", message)
     } else {
         let _where = &format!("at '{}'", token.lexeme);
@@ -141,6 +138,25 @@ fn lox_error(token: &Token, message: &str){
 fn report(line: &usize, _where: &str, message: &str){
     eprintln!("line {} Error {}: {}", line, _where, message);
     HAD_ERROR.store(true, Ordering::Relaxed);
+    PARSER_ERROR_LINE.store(*line as isize - 1, Ordering::Relaxed); // scanner is 1 indexed
+}
+
+fn remove_line(s: String) -> String{
+    // remove the errored line from the REPL buffer string
+    let line = PARSER_ERROR_LINE.load(Ordering::Relaxed);
+    if line == -1 {
+        return s
+    }
+    let line = line as usize;
+    let mut new_s = String::new();
+    for (i, l) in s.lines().enumerate(){
+        if i != line {
+            new_s.push_str(l);
+            new_s.push_str("\n");
+        }
+    }
+    PARSER_ERROR_LINE.store(-1, Ordering::Relaxed);
+    new_s
 }
 
 
