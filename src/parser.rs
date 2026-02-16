@@ -1,10 +1,10 @@
 use std::cmp::{min};
 
-use crate::token::{self, Literal, Token};
-use crate::token_type::{self, TokenType};
-use crate::expr::{Expr, Binary, Unary, Grouping, Variable as VariableExpr};
+use crate::token::{Literal, Token};
+use crate::token_type::{TokenType};
+use crate::expr::{Assign, Binary, Expr, Grouping, Unary, Variable as VariableExpr};
 use crate::lox_error;
-use crate::stmt::{Expression, Print, Stmt, Variable};
+use crate::stmt::{Expression, Print, Stmt, Variable, Block};
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -52,6 +52,11 @@ impl Parser {
         if self._match(&token_type) {
             return self.print_statement()
         }
+        let token_type = [TokenType::LeftBrace];
+        if self._match(&token_type) {
+            return Ok(Stmt::Block(Block{statements: self.block()?}))
+        }
+
         return self.expression_statement()
     }
 
@@ -81,9 +86,44 @@ impl Parser {
         return Ok(Stmt::Expression(Expression {expression: expr?}));
     }
 
-    fn expression(&mut self) -> Result<Expr, ParserError>{
-        return self.comma()
+    fn block(&mut self) -> Result<Vec<Stmt>, ParserError> {
+        let mut statements = Vec::new();
+
+        let token_type = TokenType::RightBrace;
+        while !self._check(&token_type) & !self._at_end(){
+            let expr = self.declaration();
+            statements.extend(expr);
+        }
+        self._consume(&token_type, "expected a '}' after the bloke")?;
+        Ok(statements)
     }
+
+    fn expression(&mut self) -> Result<Expr, ParserError>{
+        self.assignment()
+    }
+
+    fn assignment(&mut self) ->  Result<Expr, ParserError> {
+        let expr = self.comma()?;
+        let token_types = [TokenType::Equal];
+
+        if !self._match(&token_types) {
+            return Ok(expr)
+        }
+
+        match expr {
+            Expr::Variable(var) => {
+                // a = b = 2 for example
+                let value = self.assignment()?;
+                let name = var.name.clone();
+                Ok(Expr::Assign(Assign {name: name, value: Box::new(value)}))
+            },
+            _ => {
+                let prev = self._previous();
+                Err(self._error(prev, "Invalid assignment target"))
+            }
+        }
+    }
+
 
     fn comma(&mut self) -> Result<Expr, ParserError> {
         // challenge question ch6. Comma has lowest precedence in C according to stackoverflow

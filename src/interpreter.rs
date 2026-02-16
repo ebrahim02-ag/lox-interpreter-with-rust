@@ -1,16 +1,21 @@
 
 use std::fmt;
-use crate::expr::{Visitor, Expr, Binary, Grouping, Unary, Variable as VariableExpr, walk_expr};
+use crate::expr::{Visitor, Expr, Binary, Grouping, Unary, Variable as VariableExpr, walk_expr, Assign};
 use crate::lox_error;
 use crate::token::{Literal, Token};
 use crate::object::Object;
 use crate::token_type::TokenType;
-use crate::stmt::{Stmt, Visitor as StmtVisitor, Expression, Print, walk_stmt, Variable};
+use crate::stmt::{Stmt, Visitor as StmtVisitor, Expression, Print, walk_stmt, Variable, Block};
 use crate::environment::{Environment};
+use std::cell::RefCell;
+use std::rc::Rc;
+
 
 
 pub struct Interpreter {
-    environment: Environment,
+    // i am using a refcell since i need to mutate environment in place in the visit_block_stm
+    // and I am using RC so it's consistent with Environment.enclosing type
+    environment: RefCell<Rc<Environment>>,
 }
 
 pub struct RuntimeError {
@@ -33,9 +38,15 @@ impl fmt::Display for RuntimeError {
     }
 }
 
-impl Visitor<Result<Object, RuntimeError>> for Interpreter {
+impl Visitor<Result<Object, RuntimeError>> for Interpreter{
     fn visit_variableexp(&self, e: &VariableExpr) -> Result<Object, RuntimeError> {
-        return self.environment.get(&e.name)
+        return self.environment.borrow().get(&e.name)
+    }
+
+    fn visit_assignexp(&self, expr: &Assign) -> Result<Object, RuntimeError> {
+        let value = self.evaluate(&expr.value)?;
+        self.environment.borrow().assign(&expr.name, value.clone())?;
+        Ok(value)
     }
 
     fn visit_binaryexp(&self, e: &Binary) -> Result<Object, RuntimeError> {
@@ -132,12 +143,17 @@ impl Visitor<Result<Object, RuntimeError>> for Interpreter {
 }
 
 impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
-    fn visit_var_stm(&self, stmt: &Variable) -> Result<(), RuntimeError> {
+    fn visit_block_stmt(&self, stmt: &Block) -> Result<(), RuntimeError> {
+        let sr = Rc::clone(&self.environment.borrow());
+        self.execute_block(&stmt.statements, Rc::new(Environment::new(Some(sr))))
+    }
+
+    fn visit_var_stmt(&self, stmt: &Variable) -> Result<(), RuntimeError> {
         // in the book, the initializer can be None and needs to be handled differently. However, for us
         // the initializer can't be None - it's an enum whose value is type Literal::Nil which evaluates to None.
         // This means we don't need to handle it separately.
         let value = self.evaluate(&stmt.initializer);
-        self.environment.define(stmt.name.lexeme.to_owned(), value?);
+        self.environment.borrow().define(stmt.name.lexeme.to_owned(), value?);
         Ok(())
     }
 
@@ -165,7 +181,7 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
 impl Interpreter {
     pub fn new() -> Self {
         Self {
-            environment: Environment::new()
+            environment: RefCell::new(Rc::new(Environment::new(None)))
         }
     }
 
@@ -182,6 +198,16 @@ impl Interpreter {
 
     fn execute(&self, stmt: &Stmt) -> Result<(), RuntimeError>{
         return walk_stmt(self, stmt)
+    }
+
+    fn execute_block(&self, statements: &Vec<Stmt>, environment: Rc<Environment>) -> Result<(), RuntimeError>{
+        // temporarily change the enviornment to current block's. Once done revert back to previous bloke.
+        let previous = self.environment.replace(environment);
+
+        // this is similar to try finally block from python/java
+        let result = statements.iter().try_for_each(|stmt| self.execute(stmt));
+        self.environment.replace(previous);
+        result
     }
 
     fn stringify(&self, obj: &Object) -> String {

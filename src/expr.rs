@@ -6,6 +6,7 @@ pub enum Expr {
     Unary(Unary),
     Binary(Binary),
     Variable(Variable),
+    Assign(Assign),
 }
 
 pub struct Grouping {
@@ -27,12 +28,18 @@ pub struct Variable {
     pub name: Token,
 }
 
+pub struct Assign {
+    pub name: Token,
+   pub value: Box<Expr>,
+}
+
 pub trait Visitor<T> {
     fn visit_binaryexp(&self, e: &Binary) -> T;
     fn visit_groupingexp(&self, e: &Grouping) -> T;
     fn visit_literalexp(&self, e: &Literal) -> T;
     fn visit_unaryexp(&self, e: &Unary) -> T;
     fn visit_variableexp(&self, e: &Variable) -> T;
+    fn visit_assignexp(&self, e: &Assign) -> T;
 }
 
 pub fn walk_expr<T>(visitor: &dyn Visitor<T>, e: &Expr) -> T {
@@ -42,6 +49,6 @@ pub fn walk_expr<T>(visitor: &dyn Visitor<T>, e: &Expr) -> T {
         Expr::Unary(unary) => visitor.visit_unaryexp(unary),
         Expr::Grouping(grouping) => visitor.visit_groupingexp(grouping),
         Expr::Variable(variable) => visitor.visit_variableexp(variable),
-
+        Expr::Assign(assign) => visitor.visit_assignexp(assign)
     }
 }

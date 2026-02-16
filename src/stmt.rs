@@ -1,10 +1,11 @@
-use crate::token::{Token, Literal};
+use crate::token::{Token};
 use crate::expr::Expr;
 
 pub enum Stmt {
     Expression(Expression),
     Print(Print),
-    Variable(Variable)
+    Variable(Variable),
+    Block(Block)
 }
 
 pub struct Expression {
@@ -20,18 +21,23 @@ pub struct Variable {
     pub initializer: Expr,
 }
 
+pub struct Block {
+    pub statements: Vec<Stmt>
+}
+
 pub trait Visitor<T> {
     fn visit_expression(&self, e: &Expression) -> T;
     fn visit_print(&self, e: &Print) -> T;
-    fn visit_var_stm(&self, e: &Variable) -> T;
+    fn visit_var_stmt(&self, e: &Variable) -> T;
+    fn visit_block_stmt(&self, e: &Block) -> T;
 }
-
 
 
 pub fn walk_stmt<T>(visitor: &dyn Visitor<T>, e: &Stmt) -> T {
     match e {
         Stmt::Expression(expr) => visitor.visit_expression(expr),
         Stmt::Print(pri) => visitor.visit_print(pri),
-        Stmt::Variable(var) => visitor.visit_var_stm(var),
+        Stmt::Variable(var) => visitor.visit_var_stmt(var),
+        Stmt::Block(blo) => visitor.visit_block_stmt(blo),
     }
 }

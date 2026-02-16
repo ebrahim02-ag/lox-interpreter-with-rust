@@ -1,10 +1,18 @@
-use crate::expr::{Visitor, Expr, Binary, Grouping, Unary, Variable, walk_expr};
-use crate::stmt::{Stmt, Visitor as StmtVisitor, Expression, Print, walk_stmt, Variable as StmVariable};
+use crate::expr::{Visitor,Assign,  Expr, Binary, Grouping, Unary, Variable, walk_expr};
+use crate::stmt::{Stmt, Visitor as StmtVisitor, Expression, Print, walk_stmt, Variable as StmVariable, Block};
 use crate::token::{Literal};
 pub struct AstPrinter;
 
 
 impl StmtVisitor<String> for AstPrinter {
+    fn visit_block_stmt(&self, e: &Block) -> String {
+        let mut s = String::new();
+        for i in self.print_stmts(&e.statements){
+            s = s + i.as_str();
+        }
+        s
+    }
+
     fn visit_expression(&self, e: &Expression) -> String {
         self.print(&e.expression)
     }
@@ -13,7 +21,7 @@ impl StmtVisitor<String> for AstPrinter {
         format!("print {}",self.print(&e.expression))
     }
 
-    fn visit_var_stm(&self, e: &StmVariable) -> String {
+    fn visit_var_stmt(&self, e: &StmVariable) -> String {
         format!("var {} = {}", e.name.lexeme, self.print(&e.initializer))
     }
 }
@@ -42,6 +50,10 @@ impl Visitor<String> for AstPrinter{
     }
 
     fn visit_variableexp(&self, e: &Variable) -> String {
+        format!("var {} =", e.name.lexeme)
+    }
+
+    fn visit_assignexp(&self, e: &Assign) -> String {
         format!("var {} =", e.name.lexeme)
     }
 }
