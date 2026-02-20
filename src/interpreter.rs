@@ -5,7 +5,7 @@ use crate::lox_error;
 use crate::token::{Literal, Token};
 use crate::object::Object;
 use crate::token_type::TokenType;
-use crate::stmt::{Stmt, Visitor as StmtVisitor, Expression, Print, walk_stmt, Variable, Block};
+use crate::stmt::{Stmt, Visitor as StmtVisitor, Expression, Print, walk_stmt, Variable, Block, If};
 use crate::environment::{Environment};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -143,6 +143,16 @@ impl Visitor<Result<Object, RuntimeError>> for Interpreter{
 }
 
 impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
+    fn visit_if_stmt(&self, stmt: &If) -> Result<(), RuntimeError> {
+        if self.is_truthy(&self.evaluate(&stmt.condition)?){
+            self.execute(&stmt.then_branch);
+        } else {
+            // if else_branch is not not then execute it
+            stmt.else_branch.as_ref().map(|e| self.execute(e));
+        }
+        Ok(())
+    }
+
     fn visit_block_stmt(&self, stmt: &Block) -> Result<(), RuntimeError> {
         let sr = Rc::clone(&self.environment.borrow());
         self.execute_block(&stmt.statements, Rc::new(Environment::new(Some(sr))))

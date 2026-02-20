@@ -1,10 +1,10 @@
 use std::cmp::{min};
 
 use crate::token::{Literal, Token};
-use crate::token_type::{TokenType};
+use crate::token_type::{self, TokenType};
 use crate::expr::{Assign, Binary, Expr, Grouping, Unary, Variable as VariableExpr};
 use crate::lox_error;
-use crate::stmt::{Expression, Print, Stmt, Variable, Block};
+use crate::stmt::{Expression, Print, Stmt, Variable, Block, If};
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -48,6 +48,11 @@ impl Parser {
     }
 
     fn statement(&mut self) -> Result<Stmt, ParserError>  {
+        let token_type = [TokenType::If];
+        if self._match(&token_type) {
+            return self.if_statement()
+        }
+
         let token_type = [TokenType::Print];
         if self._match(&token_type) {
             return self.print_statement()
@@ -72,6 +77,26 @@ impl Parser {
         };
         self._consume(&TokenType::Semicolon, "Expected ';' at the end of statement")?;
         return Ok(Stmt::Variable(Variable {name: name, initializer: expr?}));
+    }
+
+    fn if_statement(&mut self) -> Result<Stmt, ParserError> {
+        self._consume(&TokenType::LeftParen, "Expected a '(' after 'if'")?;
+        let condition = self.expression()?;
+        self._consume(&TokenType::RightParen, "Expected a ')' end of 'if' expression")?;
+
+        let then_stmt = Box::new(self.statement()?);
+        let mut else_stmt = None;
+        let token_type = [TokenType::Else];
+        if self._match(&token_type) {
+            else_stmt = Some(Box::new(self.statement()?));
+        }
+
+        return Ok(Stmt::If(If{
+            condition: condition,
+            then_branch: then_stmt,
+            else_branch: else_stmt
+        }))
+
     }
 
     fn print_statement(&mut self) -> Result<Stmt, ParserError> {
