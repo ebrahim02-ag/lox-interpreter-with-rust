@@ -1,6 +1,6 @@
 
 use std::fmt;
-use crate::expr::{Visitor, Expr, Binary, Grouping, Unary, Variable as VariableExpr, walk_expr, Assign};
+use crate::expr::{Visitor, Expr, Binary, Grouping, Unary, Variable as VariableExpr, walk_expr, Assign, Logical};
 use crate::lox_error;
 use crate::token::{Literal, Token};
 use crate::object::Object;
@@ -39,6 +39,25 @@ impl fmt::Display for RuntimeError {
 }
 
 impl Visitor<Result<Object, RuntimeError>> for Interpreter{
+    fn visit_logicalexp(&self, e: &Logical) -> Result<Object, RuntimeError> {
+        let left = self.evaluate(&e.left)?;
+        match e.condition.kind {
+            TokenType::Or => {
+                if self.is_truthy(&left) {
+                    return Ok(left)
+                }
+            }
+            TokenType::And => {
+                if !self.is_truthy(&left){
+                    return Ok(left)
+                }
+            }
+            _ => unreachable!()
+        }
+
+        return self.evaluate(&e.right);
+    }
+
     fn visit_variableexp(&self, e: &VariableExpr) -> Result<Object, RuntimeError> {
         return self.environment.borrow().get(&e.name)
     }

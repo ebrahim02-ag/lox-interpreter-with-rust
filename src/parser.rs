@@ -2,7 +2,7 @@ use std::cmp::{min};
 
 use crate::token::{Literal, Token};
 use crate::token_type::{self, TokenType};
-use crate::expr::{Assign, Binary, Expr, Grouping, Unary, Variable as VariableExpr};
+use crate::expr::{Assign, Binary, Expr, Grouping, Unary, Variable as VariableExpr, Logical};
 use crate::lox_error;
 use crate::stmt::{Expression, Print, Stmt, Variable, Block, If};
 
@@ -128,7 +128,7 @@ impl Parser {
     }
 
     fn assignment(&mut self) ->  Result<Expr, ParserError> {
-        let expr = self.comma()?;
+        let expr = self.or()?;
         let token_types = [TokenType::Equal];
 
         if !self._match(&token_types) {
@@ -149,6 +149,27 @@ impl Parser {
         }
     }
 
+    fn or(&mut self) -> Result<Expr, ParserError> {
+        let token_types = [TokenType::Or];
+        let mut expr = self.and()?;
+        while self._match(&token_types){
+            let operator = self._previous().clone();
+            let right = self.and()?;
+            expr = Expr::Logical(Logical{condition: operator, left: Box::new(expr), right: Box::new(right)});
+        }
+        Ok(expr)
+    }
+
+    fn and(&mut self) -> Result<Expr, ParserError> {
+        let token_types = [TokenType::And];
+        let mut expr = self.comma()?;
+        while self._match(&token_types){
+            let operator = self._previous().clone();
+            let right = self.comma()?;
+            expr = Expr::Logical(Logical{condition: operator, left: Box::new(expr), right: Box::new(right)});
+        }
+        Ok(expr)
+    }
 
     fn comma(&mut self) -> Result<Expr, ParserError> {
         // challenge question ch6. Comma has lowest precedence in C according to stackoverflow

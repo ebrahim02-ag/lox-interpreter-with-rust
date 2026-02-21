@@ -1,4 +1,4 @@
-use crate::expr::{Visitor,Assign,  Expr, Binary, Grouping, Unary, Variable, walk_expr};
+use crate::expr::{Visitor,Assign,  Expr, Binary, Grouping, Unary, Variable, walk_expr, Logical};
 use crate::stmt::{Stmt, Visitor as StmtVisitor, Expression, Print, walk_stmt, Variable as StmVariable, Block, If};
 use crate::token::{Literal};
 pub struct AstPrinter;
@@ -62,6 +62,10 @@ impl Visitor<String> for AstPrinter{
 
     fn visit_assignexp(&self, e: &Assign) -> String {
         format!("var {} =", e.name.lexeme)
+    }
+
+    fn visit_logicalexp(&self, e: &Logical) -> String {
+        self.paranthesize(&e.condition.lexeme, vec![&e.left, &e.right])
     }
 }
 

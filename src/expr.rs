@@ -7,6 +7,7 @@ pub enum Expr {
     Binary(Binary),
     Variable(Variable),
     Assign(Assign),
+    Logical(Logical)
 }
 
 pub struct Grouping {
@@ -33,6 +34,12 @@ pub struct Assign {
    pub value: Box<Expr>,
 }
 
+pub struct Logical {
+    pub left: Box<Expr>,
+    pub condition: Token,
+    pub right: Box<Expr>
+}
+
 pub trait Visitor<T> {
     fn visit_binaryexp(&self, e: &Binary) -> T;
     fn visit_groupingexp(&self, e: &Grouping) -> T;
@@ -40,6 +47,7 @@ pub trait Visitor<T> {
     fn visit_unaryexp(&self, e: &Unary) -> T;
     fn visit_variableexp(&self, e: &Variable) -> T;
     fn visit_assignexp(&self, e: &Assign) -> T;
+    fn visit_logicalexp(&self, e: &Logical) -> T;
 }
 
 pub fn walk_expr<T>(visitor: &dyn Visitor<T>, e: &Expr) -> T {
@@ -49,6 +57,7 @@ pub fn walk_expr<T>(visitor: &dyn Visitor<T>, e: &Expr) -> T {
         Expr::Unary(unary) => visitor.visit_unaryexp(unary),
         Expr::Grouping(grouping) => visitor.visit_groupingexp(grouping),
         Expr::Variable(variable) => visitor.visit_variableexp(variable),
-        Expr::Assign(assign) => visitor.visit_assignexp(assign)
+        Expr::Assign(assign) => visitor.visit_assignexp(assign),
+        Expr::Logical(logical) => visitor.visit_logicalexp(logical)
     }
 }
