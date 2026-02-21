@@ -4,7 +4,7 @@ use crate::token::{Literal, Token};
 use crate::token_type::{self, TokenType};
 use crate::expr::{Assign, Binary, Expr, Grouping, Unary, Variable as VariableExpr, Logical};
 use crate::lox_error;
-use crate::stmt::{Expression, Print, Stmt, Variable, Block, If};
+use crate::stmt::{Expression, Print, Stmt, Variable, Block, If, While};
 
 pub struct Parser {
     tokens: Vec<Token>,
@@ -57,9 +57,20 @@ impl Parser {
         if self._match(&token_type) {
             return self.print_statement()
         }
+
         let token_type = [TokenType::LeftBrace];
         if self._match(&token_type) {
             return Ok(Stmt::Block(Block{statements: self.block()?}))
+        }
+
+        let token_type = [TokenType::While];
+        if self._match(&token_type) {
+            return self.while_statement()
+        }
+
+        let token_type = [TokenType::For];
+        if self._match(&token_type) {
+            return self.for_statement()
         }
 
         return self.expression_statement()
@@ -97,6 +108,58 @@ impl Parser {
             else_branch: else_stmt
         }))
 
+    }
+
+    fn while_statement(&mut self) -> Result<Stmt, ParserError> {
+        self._consume(&TokenType::LeftParen, "Expected a '(' after 'while'")?;
+        let condition = self.expression()?;
+        self._consume(&TokenType::RightParen, "Expected a ')' end of 'while' expression")?;
+
+        let body = Box::new(self.statement()?);
+
+        return Ok(Stmt::While(While{
+            condition: condition,
+            body: body,
+        }))
+    }
+
+    fn for_statement(&mut self) -> Result<Stmt, ParserError> {
+        // there is no for statement trait, we just desugar it into a while loop
+
+        self._consume(&TokenType::LeftParen, "Expected a '(' after 'for'")?;
+        let initializer: Option<Stmt>;
+        let semicolon = [TokenType::Semicolon];
+        if self._match(&semicolon){
+            // the variable was declared outside -> for (; i < 10; i = i + 1)
+            initializer = None;
+        }
+        let token_types = [TokenType::Var];
+        if self._match(&token_types){
+            // for (var i = 0...
+            initializer = self.declaration();
+        } else {
+            // for (i = 0) -> assignment
+            initializer = Some(self.expression_statement()?);
+        }
+
+        let condition;
+        if !self._check(&semicolon[0]){
+            condition = self.expression();
+        }
+
+        self._consume(&semicolon[0], "Expected a ';' after conditon in 'for'")?;
+
+        let increment;
+        if !self._check(&semicolon[0]){
+            increment = self.expression();
+        }
+
+        self._consume(&semicolon[0], "Expected a ')' end of 'for'")?;
+        let body = self.statement();
+
+        // finish up for next sess
+
+        body
     }
 
     fn print_statement(&mut self) -> Result<Stmt, ParserError> {

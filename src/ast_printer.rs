@@ -1,5 +1,5 @@
 use crate::expr::{Visitor,Assign,  Expr, Binary, Grouping, Unary, Variable, walk_expr, Logical};
-use crate::stmt::{Stmt, Visitor as StmtVisitor, Expression, Print, walk_stmt, Variable as StmVariable, Block, If};
+use crate::stmt::{Stmt, Visitor as StmtVisitor, Expression, Print, walk_stmt, Variable as StmVariable, Block, If, While};
 use crate::token::{Literal};
 pub struct AstPrinter;
 
@@ -30,6 +30,10 @@ impl StmtVisitor<String> for AstPrinter {
         // if else exists then mutate s and add the esle to it
         e.else_branch.as_ref().map(|e| s = format!("{} else {}", s, walk_stmt(self, &e)));
         s
+    }
+
+    fn visit_while_stmt(&self, e: &While) -> String {
+        format!("if ({}) {}", self.print(&e.condition), walk_stmt(self, &e.body))
     }
 }
 
@@ -67,6 +71,7 @@ impl Visitor<String> for AstPrinter{
     fn visit_logicalexp(&self, e: &Logical) -> String {
         self.paranthesize(&e.condition.lexeme, vec![&e.left, &e.right])
     }
+
 }
 
 

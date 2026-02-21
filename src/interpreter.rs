@@ -5,7 +5,7 @@ use crate::lox_error;
 use crate::token::{Literal, Token};
 use crate::object::Object;
 use crate::token_type::TokenType;
-use crate::stmt::{Stmt, Visitor as StmtVisitor, Expression, Print, walk_stmt, Variable, Block, If};
+use crate::stmt::{Stmt, Visitor as StmtVisitor, Expression, Print, walk_stmt, Variable, Block, If, While};
 use crate::environment::{Environment};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -43,11 +43,13 @@ impl Visitor<Result<Object, RuntimeError>> for Interpreter{
         let left = self.evaluate(&e.left)?;
         match e.condition.kind {
             TokenType::Or => {
+                // if left is true then it's true
                 if self.is_truthy(&left) {
                     return Ok(left)
                 }
             }
             TokenType::And => {
+                // if and is false then it's false
                 if !self.is_truthy(&left){
                     return Ok(left)
                 }
@@ -55,6 +57,7 @@ impl Visitor<Result<Object, RuntimeError>> for Interpreter{
             _ => unreachable!()
         }
 
+        // continue resolving
         return self.evaluate(&e.right);
     }
 
@@ -204,6 +207,13 @@ impl StmtVisitor<Result<(), RuntimeError>> for Interpreter {
                 Ok(())
             }
         }
+    }
+
+    fn visit_while_stmt(&self, e: &While) -> Result<(), RuntimeError> {
+        while self.is_truthy(&self.evaluate(&e.condition)?) {
+            self.execute(&e.body)?;
+        }
+        Ok(())
     }
 }
 
