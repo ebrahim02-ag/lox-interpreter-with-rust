@@ -1,0 +1,16 @@
+
+var b = 0;
+for (var a = 0; a < 100; a = a + 1){
+
+    if (a == 10 or a == 20 or a == 50){
+        print a;
+        b = b + 1;
+    }
+
+    if (a > 50 and a < 53){
+        b = b + 1;
+    }
+}
+
+// expected b = 5
+print b;

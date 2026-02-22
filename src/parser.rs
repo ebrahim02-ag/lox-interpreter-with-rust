@@ -129,12 +129,12 @@ impl Parser {
         self._consume(&TokenType::LeftParen, "Expected a '(' after 'for'")?;
         let initializer: Option<Stmt>;
         let semicolon = [TokenType::Semicolon];
+        let var_type = TokenType::Var;
         if self._match(&semicolon){
             // the variable was declared outside -> for (; i < 10; i = i + 1)
             initializer = None;
         }
-        let token_types = [TokenType::Var];
-        if self._match(&token_types){
+        else if self._check(&var_type){
             // for (var i = 0...
             initializer = self.declaration();
         } else {
@@ -142,24 +142,49 @@ impl Parser {
             initializer = Some(self.expression_statement()?);
         }
 
-        let condition;
+        let mut condition: Option<Expr> = None;
         if !self._check(&semicolon[0]){
-            condition = self.expression();
+            condition = Some(self.expression()?);
         }
 
         self._consume(&semicolon[0], "Expected a ';' after conditon in 'for'")?;
 
-        let increment;
+        let mut increment: Option<Expr> = None;
         if !self._check(&semicolon[0]){
-            increment = self.expression();
+            increment = Some(self.expression()?);
         }
 
-        self._consume(&semicolon[0], "Expected a ')' end of 'for'")?;
-        let body = self.statement();
+        self._consume(&&TokenType::RightParen, "Expected a ')' end of 'for'")?;
+        let mut body = self.statement()?;
 
-        // finish up for next sess
+        if let Some(e) = increment {
+            // if an increment exists, then it should be executed after the body every loop
+            // so we wrap it around a block with the body and the increment so they
+            // can always be executed together
+            body = Stmt::Block(Block {
+                statements: vec![
+                    body,
+                    Stmt::Expression(Expression { expression: e })
+                ]
+            });
+        }
 
-        body
+        // if no condition, then explicity set it to true
+        let condition = condition.unwrap_or_else(|| Expr::Literal(Literal::Bool(true)));
+
+        body = Stmt::While(While { condition: condition, body: Box::new(body) });
+
+        // finally, jam the initializer, if it exists, to the top so it runs once before the while loop
+        if let Some(e) = initializer {
+            body = Stmt::Block(Block {
+                statements: vec![
+                     e,
+                    body
+                ]
+            });
+        }
+
+        Ok(body)
     }
 
     fn print_statement(&mut self) -> Result<Stmt, ParserError> {

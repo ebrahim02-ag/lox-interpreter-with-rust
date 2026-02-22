@@ -50,11 +50,14 @@ fn main() {
         std::process::exit(64);
     }
 
-    if args.len() == 2 {
-        run_file(&args[0]);
-    } else {
-        run_prompt();
-    }
+    run_file("./test.txt");
+
+
+    // if args.len() == 2 {
+    //     run_file(&args[0]);
+    // } else {
+    //     run_prompt();
+    // }
 
 }
 
